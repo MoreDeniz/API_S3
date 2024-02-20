@@ -1,8 +1,7 @@
 // Задача 2.
 
 // Бесконечная лента фотографий
-// Для создания бесконечной ленты с фотографиями с использованием
-// Unsplash API, выполните следующие шаги:
+// Для создания бесконечной ленты с фотографиями с использованием Unsplash API, выполните следующие шаги:
 // 1. Зарегистрируйтесь на Unsplash:
 // ○ Перейдите на веб-сайт Unsplash (https://unsplash.com/).
 // ○ Нажмите кнопку "Join" или "Регистрация", чтобы создать аккаунт, если у вас его еще нет.
@@ -33,19 +32,92 @@
 // 6. Реализуйте бесконечную подгрузку фотографий при прокручивании страницы.
 
 // const fotoData = [];
-const url =
-  "https://api.unsplash.com/photos/?client_id=ehChI0CYn26sYMvZVht--g4AW_CRCwbdBHSNJxkCAzU";
+
+// получаем функцию, кот увеличивает номер страницы
+const getNumPage = counter();
+
+// закачиваем сейчас данные или нет
+let isFetching = false;
+
 const photoContentEl = document.getElementById("photo-container");
 
-
-// Получить данные с сервера, вернёт промисб кот резолвится в js-object
-function getImagesFetch() {
-  return fetch(url)
-    .then((data) => data.json())
-    .then((fotolist) => {
-      return fotolist;
-    });
+try {
+  // получаем данные fotoData возвращает promice, меняет
+  const fotoData = await getImagesFetch(getNumPage());
+  render(fotoData);
+} catch (err) {
+  alert(err);
 }
+
+window.addEventListener("scroll", async function () {
+  // если уже качается, то больше не подкачивать!
+  if (isFetching) {
+    return;
+  }
+  let scrollHeight = Math.max(
+    document.body.scrollHeight,
+    document.documentElement.scrollHeight,
+    document.body.offsetHeight,
+    document.documentElement.offsetHeight,
+    document.body.clientHeight,
+    document.documentElement.clientHeight
+  );
+
+  // когда дойдём до низа - подгрузить ещё
+  if (document.documentElement.scrollTop > scrollHeight * 0.7) {
+    try {
+      // получаем данные fotoData возвращает promice, меняет
+      const fotoData = await getImagesFetch(getNumPage());
+      render(fotoData);
+    } catch (err) {
+      alert(err);
+    }
+  }
+});
+
+// отображение фото - синхр ф-ция!!!
+function render(fotoData) {
+  // передаём его в showPictures
+  const html = showPictures(fotoData);
+
+  photoContentEl.insertAdjacentHTML("beforebegin", html);
+}
+
+// Получить данные с сервера, вернёт промис кот резолвится в js-object
+async function getImagesFetch(numPage) {
+  isFetching = true; //если подкачиваем новые фото
+  try {
+    const response = await fetch(
+      `https://api.unsplash.com/photos/?client_id=${client_id}&page=${numPage}`
+    );
+    if (!response.ok) {
+      throw new Error("Сервер встал");
+    }
+    return await response.json();
+  } catch (err) {
+    //принимаем ошибку и прокидываем дальше
+    throw err;
+  } finally {
+    isFetching = false;
+  }
+}
+
+// function getImagesFetch(numPage) {
+//   isFetching = true; //если подкачиваем новые фото
+//   return fetch(
+//     `https://api.unsplash.com/photos/?client_id=${client_id}&page=${numPage}`
+//   )
+//     .then((response) => {
+//       if (!response.ok) {
+//         throw new Error("Сервер встал")
+//       }
+//       response.json();
+//     })
+//     .then((fotolist) => {
+//       return fotolist;
+//     })
+//     .finally(() => isFetching = false);
+// }
 
 //функция, принимает массив, возвр строку html, состоящую из наших img
 function showPictures(array) {
@@ -54,17 +126,18 @@ function showPictures(array) {
   //добавляем в неё кусочки
   for (const arrayElement of array) {
     imgString += `<div class="photo">
-        <img src="${arrayElement.urls.small}">
-        </div>`;
+          <img src="${arrayElement.urls.small}">
+          </div>`;
   }
   // ссылка на картинку
   // arrayElement.urls.small;
   return imgString;
 }
 
-// fotoData возвращает promice
-const fotoData = await getImagesFetch();
-// передаём его в showPictures
-const html = showPictures(fotoData);
-
-photoContentEl.insertAdjacentHTML("beforebegin", html);
+// перемотка страниц
+function counter() {
+  let count = 1;
+  return function () {
+    return count++;
+  };
+}
